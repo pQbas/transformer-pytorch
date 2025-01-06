@@ -84,7 +84,6 @@ class FeedForwardBlock(nn.Module):
         def MLP2(x) : return self.linear2(x)
         def ReLU(x) : return self.relu(x)
         def drop(x) : return self.dropout(x)
-
         return MLP2(drop(ReLU(MLP1(x))))
 
 
@@ -159,41 +158,64 @@ class Decoder(nn.Module):
         return x
 
 
+class Transformer(nn.Module):
+    def __init__(
+        self,
+        seq_len = 10,
+        hidden_size = 64,
+        num_heads = 8,
+        ff_size = 256,
+        num_layers = 6,
+        attention_size = 64,
+        dropout = 0.1,
+        vocab_size = 5000
+        ):
+        super(Transformer, self).__init__()
+
+        self.encoder = Encoder(
+                num_layers=num_layers,
+                hidden_size=hidden_size,
+                attention_size=attention_size,
+                ff_size=ff_size,
+                dropout=dropout
+        ) 
+        self.decoder = Decoder(
+                num_layers = num_layers, 
+                hidden_size = hidden_size, 
+                num_heads = num_heads, 
+                ff_size = ff_size,
+                dropout = dropout
+        )
+        self.mask = torch.tril(torch.ones(seq_len, seq_len)).unsqueeze(0).unsqueeze(0)
+        self.embd = nn.Linear(1, hidden_size)
+        self.linear = nn.Linear(hidden_size, vocab_size)
+
+
+    def embd_inputs(self, src, tgt):
+        return self.embd(src), self.embd(tgt)
+
+
+    def forward(self, src, tgt):
+
+        src_embd, tgt_embd = self.embd_inputs(src, tgt)
+        z = self.encoder(src_embd)
+        y = self.decoder(tgt_embd, z, self.mask)
+        logits = self.linear(y)
+
+        return logits
+
+
 if __name__ == '__main__':
 
-    batch_size = 2
+    batch_size = 7
     seq_len = 10
     hidden_size = 64
-    num_heads = 8
-    ff_size = 256
-    num_layers = 6
-    attention_size = 64
-    dropout = 0.1
 
-    encoder = Encoder(
-        num_layers=num_layers,
-        hidden_size=hidden_size,
-        attention_size=attention_size,
-        ff_size=ff_size,
-        dropout=dropout,
-    )
+    model = Transformer()
+    x = torch.randn(batch_size, seq_len, 1)
+    y = torch.randn(batch_size, seq_len, 1)
 
-    decoder = Decoder(
-        num_layers = num_layers, 
-        hidden_size = hidden_size, 
-        num_heads = num_heads, 
-        ff_size = ff_size,
-        dropout = dropout
-    )
-
-    x = torch.randn(batch_size, seq_len, hidden_size)
-    y = torch.randn(batch_size, seq_len, hidden_size)
-
-    z = encoder(x)
-
-    mask = torch.tril(torch.ones(seq_len, seq_len)).unsqueeze(0).unsqueeze(0)
-
-    probs = decoder(y, z, mask)
+    probs = model(x, y)
 
     print(probs.shape)
 
