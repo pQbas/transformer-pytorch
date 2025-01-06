@@ -80,11 +80,11 @@ class FeedForwardBlock(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        def MLP1(x) : return self.linear1(x)
-        def MLP2(x) : return self.linear2(x)
-        def ReLU(x) : return self.relu(x)
-        def drop(x) : return self.dropout(x)
-        return MLP2(drop(ReLU(MLP1(x))))
+        w1 = self.linear1
+        w2 = self.linear2
+        relu = self.relu
+        drop = self.dropout
+        return w2(drop(relu(w1(x))))
 
 
 class EncoderBlock(nn.Module):
