@@ -163,10 +163,10 @@ class Transformer(nn.Module):
         self,
         seq_len = 10,
         hidden_size = 64,
+        attention_size = 64,
         num_heads = 8,
         ff_size = 256,
         num_layers = 6,
-        attention_size = 64,
         dropout = 0.1,
         vocab_size = 5000
         ):
