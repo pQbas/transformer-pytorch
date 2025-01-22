@@ -3,6 +3,27 @@ import torch.nn as nn
 import math
 from einops import rearrange
 
+class PositionalEncoding(nn.Module):
+    def __init__(self, hidden_size, max_seq_length=5000):
+        super().__init__()
+        
+        position = torch.arange(max_seq_length).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, hidden_size, 2) * (-math.log(10000.0) / hidden_size))
+        
+        pe = torch.zeros(max_seq_length, hidden_size)
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        """
+        Args:
+            x: Tensor, shape [batch_size, seq_len, hidden_size]
+        """
+        return x + self.pe[:x.size(1)]
+
+
 class MultiHeadAttentionBlock(nn.Module):
     def __init__(self, hidden_size, num_heads=8, dropout=0.1):
         super(MultiHeadAttentionBlock, self).__init__()
@@ -188,11 +209,14 @@ class Transformer(nn.Module):
         )
         self.mask = torch.tril(torch.ones(seq_len, seq_len)).unsqueeze(0).unsqueeze(0)
         self.embd = nn.Linear(1, hidden_size)
+        self.pos_encoder = PositionalEncoding(hidden_size, seq_len)
         self.linear = nn.Linear(hidden_size, vocab_size)
 
 
     def embd_inputs(self, src, tgt):
-        return self.embd(src), self.embd(tgt)
+        src_embd = self.pos_encoder(self.embd(src))
+        tgt_embd = self.pos_encoder(self.embd(tgt))
+        return src_embd, tgt_embd
 
 
     def forward(self, src, tgt):
