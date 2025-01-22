@@ -92,6 +92,28 @@ def train(model, dataloader, optimizer, device, num_epochs=3):
         print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {avg_loss:.4f}")
 
 
+def create_tokenizer(vocab_size):
+    """Create and train a BPE tokenizer on the dataset"""
+    try:
+        # Load dataset
+        print("Loading dataset...")
+        dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="train")
+        
+        # Initialize tokenizer
+        tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
+        trainer = BpeTrainer(
+            special_tokens=["[UNK]", "[PAD]", "[BOS]", "[EOS]"],
+            vocab_size=vocab_size
+        )
+        tokenizer.pre_tokenizer = Whitespace()
+        
+        print("Training tokenizer...")
+        return dataset, tokenizer, trainer
+        
+    except Exception as e:
+        print(f"Error creating tokenizer: {str(e)}")
+        raise
+
 
 
 if __name__ == "__main__":
@@ -131,14 +153,8 @@ if __name__ == "__main__":
     hidden_dim = 128
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    # Cargar dataset
-    dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="train")
-
-    # Crear y entrenar tokenizer
-    tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
-    trainer = BpeTrainer(special_tokens=["[UNK]", "[PAD]", "[BOS]", "[EOS]"], 
-                        vocab_size=vocab_size)
-    tokenizer.pre_tokenizer = Whitespace()
+    # Create tokenizer and load dataset
+    dataset, tokenizer, trainer = create_tokenizer(vocab_size)
     
     # Entrenar tokenizer con los textos del dataset
     def batch_iterator():
