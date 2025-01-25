@@ -200,24 +200,20 @@ class Transformer(nn.Module):
                 dropout = dropout
         )
         self.mask = torch.tril(torch.ones(seq_len, seq_len)).unsqueeze(0).unsqueeze(0)
-        self.embd = nn.Linear(1, hidden_size)
-        self.pos_encoder = PositionalEncoding(hidden_size, seq_len)
+        self.embeding_layer = nn.Linear(1, hidden_size)
+        self.position_encoder = PositionalEncoding(hidden_size, seq_len)
         self.linear = nn.Linear(hidden_size, vocab_size)
 
-
     def embd_inputs(self, src, tgt):
-        src_embd = self.pos_encoder(self.embd(src))
-        tgt_embd = self.pos_encoder(self.embd(tgt))
-        return src_embd, tgt_embd
+        source_embeding = self.position_encoder(self.embeding_layer(src))
+        target_embeding = self.position_encoder(self.embeding_layer(tgt))
+        return source_embeding, target_embeding
 
-
-    def forward(self, src, tgt):
-
-        src_embd, tgt_embd = self.embd_inputs(src, tgt)
-        z = self.encoder(src_embd)
-        y = self.decoder(tgt_embd, z, self.mask)
+    def forward(self, source, target):
+        source_embeding, target_embeding = self.embd_inputs(source, target)
+        z = self.encoder(source_embeding)
+        y = self.decoder(target_embeding, z, self.mask)
         logits = self.linear(y)
-
         return logits
 
 
