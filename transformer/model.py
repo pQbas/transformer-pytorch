@@ -42,17 +42,15 @@ class MultiHeadAttentionBlock(nn.Module):
         self.sqrtn = math.sqrt(self.head_dim)
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, q, k, v):
+    def out_operation(self, x):
+        return self.proj(self.dropout(rearrange(x, 'b h n d -> b n (h d)')))
 
-        def sftmx(x) : return self.softmax(x)
-        def outop(x) : return self.proj(self.dropout(rearrange(x, 'b h n d -> b n (h d)')))
-        sqrtn = self.sqrtn
-        
-        Q  = rearrange(self.query(q) , 'b n (h d) -> b h n d', h = self.num_heads)
-        V  = rearrange(self.value(v) , 'b n (h d) -> b h n d', h = self.num_heads)
-        KT = rearrange(self.key(k)   , 'b n (h d) -> b h d n', h = self.num_heads)
-
-        return outop( sftmx((Q @ KT) / sqrtn) @ V )
+    def forward(self, q, k, v): 
+        q  = rearrange(self.query(q) , 'b n (h d) -> b h n d', h = self.num_heads)
+        v  = rearrange(self.value(v) , 'b n (h d) -> b h n d', h = self.num_heads)
+        k_t = rearrange(self.key(k)   , 'b n (h d) -> b h d n', h = self.num_heads)
+        z = self.softmax( (q @ k_t) / self.sqrtn ) @ v
+        return self.out_operation(z)
 
 
 class MaskedMultiHeadAttentionBlock(nn.Module):
@@ -74,60 +72,54 @@ class MaskedMultiHeadAttentionBlock(nn.Module):
         self.sqrtn = math.sqrt(self.head_dim)
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, q, k, v, mask = None):
+    def out_operation(self, x): 
+        return self.proj(self.dropout(rearrange(x, 'b h n d -> b n (h d)')))
 
-        def sftmx(x) : return self.softmax(x)
-        def outop(x) : return self.proj(self.dropout(rearrange(x, 'b h n d -> b n (h d)')))
-        def maskf(x) : return x.masked_fill(mask == 0, float('-inf'))
-        sqrtn  = self.sqrtn
+    def apply_mask(self ,x ,mask):
+        return x.masked_fill(mask == 0, float('-inf'))
+
+    def forward(self, q, k, v, mask = None):
 
         if mask is None : 
             raise ValueError('Mask must be different than None')
-        mask = mask.to(dtype=q.dtype, device=q.device) 
-          
-        Q  = rearrange(self.query(q) , 'b n (h d) -> b h n d', h = self.num_heads)
-        V  = rearrange(self.value(v) , 'b n (h d) -> b h n d', h = self.num_heads)
-        KT = rearrange(self.key(k)   , 'b n (h d) -> b h d n', h = self.num_heads)
 
-        return outop(sftmx(maskf(Q @ KT / sqrtn)) @ V)
+        mask = mask.to(dtype=q.dtype, device=q.device) 
+         
+        q  = rearrange(self.query(q) , 'b n (h d) -> b h n d', h = self.num_heads)
+        v  = rearrange(self.value(v) , 'b n (h d) -> b h n d', h = self.num_heads)
+        k_t = rearrange(self.key(k)   , 'b n (h d) -> b h d n', h = self.num_heads)
+
+        z_mask = self.softmax(self.apply_mask(( q @ k_t ) / self.sqrtn, mask)) @ v
+
+        return self.out_operation(z_mask)
 
 
 class FeedForwardBlock(nn.Module):
     def __init__(self, hidden_size, ff_size, dropout=0.1):
         super(FeedForwardBlock, self).__init__()
-        self.linear1 = nn.Linear(hidden_size, ff_size)
-        self.linear2 = nn.Linear(ff_size, hidden_size)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(dropout)
+        self.feedforward = nn.Sequential(
+            nn.Linear(hidden_size, ff_size),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(ff_size, hidden_size)
+        )
 
     def forward(self, x):
-        w1 = self.linear1
-        w2 = self.linear2
-        relu = self.relu
-        drop = self.dropout
-        return w2(drop(relu(w1(x))))
+        return self.feedforward(x)
 
 
 class EncoderBlock(nn.Module):
     def __init__(self, hidden_size, attention_size, ff_size, dropout=0.1):
         super(EncoderBlock, self).__init__()
         self.attention = MultiHeadAttentionBlock(hidden_size)
-        self.ff_block = FeedForwardBlock(hidden_size, ff_size, dropout)
-        
+        self.feed_forward = FeedForwardBlock(hidden_size, ff_size, dropout)  
         self.norm1 = nn.LayerNorm(attention_size)
-        self.norm2 = nn.LayerNorm(hidden_size)
-        
+        self.norm2 = nn.LayerNorm(hidden_size)        
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        def norm1(t) : return self.norm1(t)
-        def norm2(t) : return self.norm2(t)
-        def drop(t)  : return self.dropout(t)
-        def MultHedAtt(t) : return drop(self.attention(t, t, t))
-        def FedForwrd(t)  : return drop(self.ff_block(t))
-
-        x1 = norm1(MultHedAtt(x) + x)
-        z  = norm2(FedForwrd(x1) + x1)
+        x1 = self.norm1(self.attention(x,x,x) + x)
+        z  = self.norm2(self.feed_forward(x1) + x1)
         return z
 
 
@@ -151,7 +143,7 @@ class DecoderBlock(nn.Module):
         super(DecoderBlock, self).__init__() 
         self.masked_attention = MaskedMultiHeadAttentionBlock(hidden_size, num_heads, dropout)        
         self.enc_dec_attention = MultiHeadAttentionBlock(hidden_size, num_heads, dropout) 
-        self.ff_block = FeedForwardBlock(hidden_size, ff_size, dropout)
+        self.feed_forward = FeedForwardBlock(hidden_size, ff_size, dropout)
         
         self.norm1 = nn.LayerNorm(hidden_size)
         self.norm2 = nn.LayerNorm(hidden_size)
@@ -160,7 +152,7 @@ class DecoderBlock(nn.Module):
     def forward(self, x, enc_output, tgt_mask=None):
         x1 = self.norm1(self.masked_attention(x, x, x, tgt_mask) + x)  
         x2 = self.norm2(self.enc_dec_attention(x1, enc_output, enc_output) + x1)
-        z = self.norm3(self.ff_block(x2) + x2)
+        z = self.norm3(self.feed_forward(x2) + x2)
         return z
 
 
