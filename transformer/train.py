@@ -202,7 +202,7 @@ if __name__ == "__main__":
 
     # Optimizador y entrenamiento
     optimizer = Adam(model.parameters(), lr=3e-4)
-    train(model, dataloader, optimizer, device, num_epochs=1)
+    train(model, dataloader, optimizer, device, num_epochs=10)
 
     # Guardar modelo y tokenizer
     torch.save(model.state_dict(), 'transformer_model.pth')

@@ -30,23 +30,28 @@ def generate_text(
     
     # Encode the prompt
     encoded = tokenizer.encode(prompt)
-    input_ids = torch.tensor(encoded.ids, dtype=torch.float)
+    input_ids = torch.tensor(encoded.ids, dtype=torch.long)  # Changed to long (integer)
     
     # Generate tokens one by one
-    generated_ids = input_ids.tolist()
+    generated_ids = [int(id) for id in input_ids.tolist()]  # Convert to integer list
     
     with torch.no_grad():
         for _ in range(max_length):
             # Prepare input sequence
-            if len(generated_ids) > model.sequence_length:
-                curr_input = generated_ids[-model.sequence_length:]
+            sequence_length = 9
+            if len(generated_ids) > sequence_length:
+                curr_input = generated_ids[-sequence_length:]
             else:
                 curr_input = generated_ids
                 
             # Convert to tensor and reshape
-            curr_input = torch.tensor(curr_input, dtype=torch.float).to(device)
-            curr_input = einops.rearrange(curr_input, 's -> 1 s 1')  # Add batch and feature dimensions
-            
+            curr_input = torch.tensor(curr_input, dtype=torch.long).to(device)  # Changed to long
+            curr_input = einops.rearrange(curr_input, 's -> 1 s')  # Add batch dimension
+            curr_input = curr_input.float()  # Convert to float for model processing
+            curr_input = einops.rearrange(curr_input, 'b s -> b s 1')  # Add feature dimension
+
+            print(curr_input.shape)
+
             # Get model predictions
             logits = model(curr_input, curr_input)
             logits = logits[0, -1, :] / temperature  # Get last token predictions
@@ -78,7 +83,7 @@ if __name__ == "__main__":
         attention_size=64,
         feedforward_size=128,
         number_heads=8,
-        num_layers=6,
+        number_layers=6,
         dropout=0.1
     )
     
@@ -87,7 +92,7 @@ if __name__ == "__main__":
     tokenizer = Tokenizer.from_file('tokenizer.json')
     
     # Example usage
-    prompt = "The quick brown fox"
+    prompt = "The quick brown fox is very fast but he"
     generated_text = generate_text(
         model=model,
         tokenizer=tokenizer,
