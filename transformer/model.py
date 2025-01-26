@@ -180,7 +180,7 @@ class Transformer(nn.Module):
         embedding_size = 64,
         feedforward_size = 256,
         number_heads = 8,
-        num_layers = 6,
+        number_layers = 6,
         dropout = 0.1,
         vocab_size = 5000
         ):
@@ -234,14 +234,14 @@ class Transformer(nn.Module):
         super(Transformer, self).__init__()
 
         self.encoder = Encoder(
-                num_layers=num_layers,
+                num_layers=number_layers,
                 hidden_size=hidden_size,
                 attention_size=hidden_size, #attention_size,
                 feedforward_size=feedforward_size,
                 dropout=dropout
         ) 
         self.decoder = Decoder(
-                num_layers = num_layers, 
+                num_layers = number_layers, 
                 hidden_size = hidden_size, 
                 num_heads = number_heads, 
                 feedforward_size = feedforward_size,

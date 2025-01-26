@@ -191,12 +191,12 @@ if __name__ == "__main__":
     # Inicializar modelo
     model = m.Transformer(
         vocab_size=vocab_size,
-        seq_len = seq_length-1,
+        sequence_length = seq_length-1,
         hidden_size = embed_dim,
         attention_size = embed_dim,
-        ff_size = hidden_dim,
-        num_heads=8,
-        num_layers=6,
+        feedforward_size = hidden_dim,
+        number_heads=8,
+        number_layers=6,
         dropout=0.1
     )
 
