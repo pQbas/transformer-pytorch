@@ -88,17 +88,17 @@ if __name__ == "__main__":
     )
     
     # Load the saved state
-    model.load_state_dict(torch.load('transformer_model.pth'))
+    model.load_state_dict(torch.load('weights.pth'))
     tokenizer = Tokenizer.from_file('tokenizer.json')
     
     # Example usage
-    prompt = "The quick brown fox is very fast but he"
+    prompt = "The quick brown fox is very fast but and"
     generated_text = generate_text(
         model=model,
         tokenizer=tokenizer,
         prompt=prompt,
         max_length=50,
-        temperature=0.7
+        temperature=0.3
     )
     
     print(f"Prompt: {prompt}")
