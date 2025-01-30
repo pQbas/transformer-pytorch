@@ -216,5 +216,5 @@ if __name__ == "__main__":
         dropout=0.1
     )
 
-    model = train(model, seq_length, vocab_size, batch_size, num_epochs=2)
+    model = train(model, seq_length, vocab_size, batch_size, num_epochs=10)
 
