@@ -233,6 +233,16 @@ class Transformer(nn.Module):
 
         super(Transformer, self).__init__()
 
+        self.vocab_size = vocab_size
+        self.sequence_length = sequence_length
+        self.hidden_size = hidden_size
+        self.attention_size = attention_size
+        self.embedding_size = embedding_size
+        self.feedforward_size = feedforward_size
+        self.number_heads = number_heads
+        self.number_layers = number_layers
+        self.dropout = dropout
+
         self.encoder = Encoder(
                 num_layers=number_layers,
                 hidden_size=hidden_size,

@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torch.nn import functional as F
-import model as m
+import transformer.model as m
 import einops
 
 
@@ -80,7 +80,7 @@ def create_tokenizer(vocab_size, set_ : str):
         raise
 
 
-def create_dataloader(set_ : str):
+def create_dataloader(set_ : str, batch_size : int, seq_length : int, vocab_size : int):
 
     dataset, tokenizer, trainer = create_tokenizer(vocab_size, set_)
     
@@ -144,6 +144,7 @@ def test_one_epoch(model, dataloader, device):
 
 
 def prepare_data(examples, tokenizer, seq_length):
+
     encoded = tokenizer.encode(examples["text"])
     input_ids = encoded.ids
     
@@ -158,25 +159,15 @@ def prepare_data(examples, tokenizer, seq_length):
     return windows
 
 
-def train(model, seq_length, vocab_size, batch_size, num_epochs):
-    """
-    Train function for a custom model.
+def train(model, batch_size:int, num_epochs:int):
 
-    Args:
-    - model: Your custom PyTorch model.
-    - dataloader: DataLoader providing input and target data.
-    - optimizer: Optimizer for updating model parameters.
-    - device: Device to run the training (e.g., 'cuda' or 'cpu').
-    - num_epochs: Number of training epochs.
-
-    Returns:
-    - None
-    """
+    seq_length = model.sequence_length
+    vocab_size = model.vocab_size
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    train_set = create_dataloader('train')
-    test_set  = create_dataloader('test')
+    train_set = create_dataloader('train', batch_size, seq_length + 1, vocab_size)
+    test_set  = create_dataloader('test', batch_size, seq_length + 1, vocab_size)
 
     optimizer = Adam(model.parameters(), lr=3e-4)
 
@@ -185,36 +176,35 @@ def train(model, seq_length, vocab_size, batch_size, num_epochs):
 
     print('---- Training started ----')
     for epoch in range(num_epochs):
-
         model, avg_loss = train_one_epoch(model, train_set, optimizer, device)
-        print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {avg_loss:.4f}")
-
         accuracy = test_one_epoch(model, test_set, device)
-        print(f'Accuracy: {accuracy}')
+
+        print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {avg_loss:.4f}, Accuracy: {accuracy}")
 
     torch.save(model.state_dict(), 'transformer_model.pth')
     # tokenizer.save('tokenizer.json')
     return model
 
 
-if __name__ == "__main__":
-    # Configuración
-    seq_length = 10
-    vocab_size = 8000
-    batch_size = 32
-    embed_dim = 64
-    hidden_dim = 128
+# if __name__ == "__main__":
 
-    model = m.Transformer(
-        vocab_size=vocab_size,
-        sequence_length = seq_length-1,
-        hidden_size = embed_dim,
-        attention_size = embed_dim,
-        feedforward_size = hidden_dim,
-        number_heads=8,
-        number_layers=6,
-        dropout=0.1
-    )
-
-    model = train(model, seq_length, vocab_size, batch_size, num_epochs=10)
+#     num_epochs = 10
+#     seq_length = 10
+#     vocab_size = 8000
+#     batch_size = 32
+#     embed_dim = 64
+#     hidden_dim = 128
+#
+#     model = m.Transformer(
+#         vocab_size=vocab_size,
+#         sequence_length = seq_length-1,
+#         hidden_size = embed_dim,
+#         attention_size = embed_dim,
+#         feedforward_size = hidden_dim,
+#         number_heads=8,
+#         number_layers=6,
+#         dropout=0.1
+#     )
+#
+#     model = train(model, batch_size, num_epochs, seq_length)
 
