@@ -33,11 +33,11 @@ class MultiHeadAttentionBlock(nn.Module):
         self.num_heads = num_heads
         self.head_dim = hidden_size // num_heads
         
-        self.query = nn.Linear(hidden_size, hidden_size)
-        self.key = nn.Linear(hidden_size, hidden_size)
-        self.value = nn.Linear(hidden_size, hidden_size)
+        self.query = nn.Linear(hidden_size, hidden_size, bias=False)
+        self.key = nn.Linear(hidden_size, hidden_size, bias=False)
+        self.value = nn.Linear(hidden_size, hidden_size, bias=False)
         
-        self.proj = nn.Linear(hidden_size, hidden_size) 
+        self.proj = nn.Linear(hidden_size, hidden_size, bias=False) 
         self.dropout = nn.Dropout(dropout) 
         self.sqrtn = math.sqrt(self.head_dim)
         self.softmax = nn.Softmax(dim=-1)
@@ -63,11 +63,11 @@ class MaskedMultiHeadAttentionBlock(nn.Module):
         self.num_heads = num_heads
         self.head_dim = hidden_size // num_heads
         
-        self.query = nn.Linear(hidden_size, hidden_size)
-        self.key = nn.Linear(hidden_size, hidden_size)
-        self.value = nn.Linear(hidden_size, hidden_size)
+        self.query = nn.Linear(hidden_size, hidden_size, bias=False)
+        self.key = nn.Linear(hidden_size, hidden_size, bias=False)
+        self.value = nn.Linear(hidden_size, hidden_size, bias=False)
         
-        self.proj = nn.Linear(hidden_size, hidden_size) 
+        self.proj = nn.Linear(hidden_size, hidden_size, bias=False) 
         self.dropout = nn.Dropout(dropout) 
         self.sqrtn = math.sqrt(self.head_dim)
         self.softmax = nn.Softmax(dim=-1)
